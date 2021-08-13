@@ -13,6 +13,8 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   interpolating when calling `dotenv_values` (by [@johnbergvall])
 - Add override-flag to `dotenv_values` to allow for more advanced
   chaining of env-files (#73 #186 by [@johnbergvall])
+- Add helper method `chained_dotenv_values` to get all variables from chained env files
+
 
 ## [0.19.0] - 2021-07-24
 

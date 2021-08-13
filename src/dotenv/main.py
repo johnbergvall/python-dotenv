@@ -386,3 +386,54 @@ def dotenv_values(
         encoding=encoding,
         base_env=base_env,
     ).dict()
+
+
+def chained_dotenv_values(
+    dotenv_paths_or_streams: Iterable[Union[str, _PathLike, IO[str], None]],
+    verbose: bool = False,
+    interpolate: bool = True,
+    encoding: Optional[str] = "utf-8",
+    base_env: Mapping[str, Optional[str]] = os.environ,
+) -> Dict[str, Optional[str]]:
+    """
+    Parse multiple .env files/streams after each other and return the merged content
+    as a dict.
+
+    - *dotenv_paths_or_streams*: list of `dotenv_path` and `stream` arguments
+      to `dotenv_values()`
+    - *verbose*: whether to output a warning the .env file is missing. Defaults to
+      `False`.
+    - *encoding*: encoding to be used to read the file.
+    - *base_env*: dict with initial environment. Defaults to os.environ
+    """
+    result = None
+
+    if not dotenv_paths_or_streams or any(arg is None for arg in dotenv_paths_or_streams):
+        raise ValueError(
+            'Filenames and/or stream arguments are required for chained loading. Use '
+            'find_dotenv() to auto detect env-file'
+        )
+
+    for argument in dotenv_paths_or_streams:
+        dotenv_path = stream = None
+        if isinstance(argument, (str, _PathLike)):
+            dotenv_path = argument
+        elif isinstance(argument, io.IOBase):
+            stream = argument
+
+        cur = DotEnv(
+            dotenv_path=dotenv_path,
+            stream=stream,
+            verbose=verbose,
+            interpolate=interpolate,
+            override=True,
+            encoding=encoding,
+            base_env=base_env,
+        )
+        if not result:
+            result = cur
+
+        result.update_dict(cur.parse())
+
+    assert result  # type check
+    return result.dict()

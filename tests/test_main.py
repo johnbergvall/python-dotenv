@@ -407,3 +407,27 @@ def test_dotenv_values_file_stream(dotenv_file):
         result = dotenv.dotenv_values(stream=f)
 
     assert result == {"a": "b"}
+
+
+def test_chained_dotenv_values(dotenv_file, dotenv_file_override):
+    io_stream = io.StringIO('a=a\nb=c')
+
+    with open(dotenv_file, "w") as f:
+        f.write("a=b${a}")
+
+    with open(dotenv_file_override, "w") as f:
+        f.write("b=c2")
+
+    with open(dotenv_file, "r") as f:
+        result = dotenv.chained_dotenv_values([io_stream, dotenv_file, dotenv_file_override, f])
+
+    assert result == {"a": "bba", 'b': 'c2'}
+
+
+def test_chained_dotenv_values_invalid_arguments():
+
+    with pytest.raises(ValueError):
+        dotenv.chained_dotenv_values([])
+
+    with pytest.raises(ValueError):
+        dotenv.chained_dotenv_values([None])

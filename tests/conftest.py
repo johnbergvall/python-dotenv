@@ -14,3 +14,10 @@ def dotenv_file(tmp_path):
     file_ = tmp_path / '.env'
     file_.write_bytes(b'')
     yield str(file_)
+
+
+@pytest.fixture
+def dotenv_file_override(tmp_path):
+    file_ = tmp_path / '.env-override'
+    file_.write_bytes(b'')
+    yield str(file_)
