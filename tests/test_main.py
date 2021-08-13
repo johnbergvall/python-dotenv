@@ -333,6 +333,22 @@ def test_dotenv_values_file_base_env(dotenv_file):
 
     assert result == {"a": "b"}
 
+
+
+def test_dotenv_update_dict(dotenv_file):
+    with open(dotenv_file, "w") as f:
+        f.write("a=b")
+
+    result = dotenv.main.DotEnv(dotenv_file, base_env={'var': 'd'})
+    result.update_dict({'a': 'b2'})
+
+    assert result.dict() == {"a": "b2"}
+
+    result.update_dict({'b': '${a}', 'c': '${var}'})
+
+    assert result.dict() == {"a": "b2", 'b': 'b2', 'c': 'd'}
+
+
 @pytest.mark.parametrize(
     "env,string,interpolate,expected",
     [

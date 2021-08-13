@@ -71,14 +71,32 @@ class DotEnv():
             return self._dict
 
         raw_values = self.parse()
+        return self.update_dict(raw_values)
+
+    def update_dict(
+        self,
+        raw_values: Union[Dict[str, Optional[str]], Iterator[Tuple[str, Optional[str]]]],
+    ) -> Dict[str, Optional[str]]:
+        """
+        Update already parsed dict with new `raw_values`
+        """
+        target_dict = self._dict if self._dict is not None else OrderedDict()
+
+        if isinstance(raw_values, dict):
+            raw_values = iter(raw_values.items())
 
         if self.interpolate:
-            self._dict = OrderedDict(
-                resolve_variables(raw_values, override=self.override, base_env=self.base_env)
+            if self.override:
+                base_env = {**self.base_env, **(self._dict or {})}
+            else:
+                base_env = {**(self._dict or {}), **self.base_env}
+            target_dict.update(
+                resolve_variables(raw_values, override=self.override, base_env=base_env)
             )
         else:
-            self._dict = OrderedDict(raw_values)
+            target_dict.update(raw_values)
 
+        self._dict = target_dict
         return self._dict
 
     def parse(self) -> Iterator[Tuple[str, Optional[str]]]:
