@@ -140,6 +140,13 @@ def get_key(dotenv_path: Union[str, _PathLike], key_to_get: str) -> Optional[str
     return DotEnv(dotenv_path, verbose=True).get(key_to_get)
 
 
+def chained_get_key(dotenv_paths: Iterable[Union[str, _PathLike]], key_to_get: str) -> Optional[str]:
+    """
+    Gets the value of a given key after merging multiple env-files
+    """
+    return chain_multiple_envs(dotenv_paths, verbose=True).get(key_to_get)
+
+
 @contextmanager
 def rewrite(path: Union[str, _PathLike]) -> Iterator[Tuple[IO[str], IO[str]]]:
     try:
@@ -388,23 +395,17 @@ def dotenv_values(
     ).dict()
 
 
-def chained_dotenv_values(
+def chain_multiple_envs(
     dotenv_paths_or_streams: Iterable[Union[str, _PathLike, IO[str], None]],
     verbose: bool = False,
     interpolate: bool = True,
+    override: bool = False,
     encoding: Optional[str] = "utf-8",
     base_env: Mapping[str, Optional[str]] = os.environ,
-) -> Dict[str, Optional[str]]:
+) -> DotEnv:
     """
-    Parse multiple .env files/streams after each other and return the merged content
-    as a dict.
-
-    - *dotenv_paths_or_streams*: list of `dotenv_path` and `stream` arguments
-      to `dotenv_values()`
-    - *verbose*: whether to output a warning the .env file is missing. Defaults to
-      `False`.
-    - *encoding*: encoding to be used to read the file.
-    - *base_env*: dict with initial environment. Defaults to os.environ
+    Helper function to parse multiple envs after each other and then merge
+    the variables. Returns `DotEnv`-instance with merged values
     """
     result = None
 
@@ -426,7 +427,7 @@ def chained_dotenv_values(
             stream=stream,
             verbose=verbose,
             interpolate=interpolate,
-            override=True,
+            override=override,
             encoding=encoding,
             base_env=base_env,
         )
@@ -436,4 +437,62 @@ def chained_dotenv_values(
         result.update_dict(cur.parse())
 
     assert result  # type check
-    return result.dict()
+    return result
+
+
+def chain_load_dotenvs(
+    dotenv_paths_or_streams: Iterable[Union[str, _PathLike, IO[str], None]],
+    verbose: bool = False,
+    interpolate: bool = True,
+    override: bool = False,
+    encoding: Optional[str] = "utf-8",
+) -> bool:
+    """
+    Parse multiple .env files/streams after each other and then load all the variables
+    found as environment variables.
+
+    - *dotenv_paths_or_streams*: list of `dotenv_path` and `stream` arguments
+      to `dotenv_values()`
+    - *verbose*: whether to output a warning the .env file is missing. Defaults to
+      `False`.
+    - *override*: whether to override the system environment variables with the variables
+      in `.env` file.  Defaults to `False`.
+    - *encoding*: encoding to be used to read the file.
+    """
+    dotenv = chain_multiple_envs(
+        dotenv_paths_or_streams,
+        verbose=verbose,
+        interpolate=interpolate,
+        override=override,
+        encoding=encoding,
+    )
+    return dotenv.set_as_environment_variables()
+
+
+def chained_dotenv_values(
+    dotenv_paths_or_streams: Iterable[Union[str, _PathLike, IO[str], None]],
+    verbose: bool = False,
+    interpolate: bool = True,
+    encoding: Optional[str] = "utf-8",
+    base_env: Mapping[str, Optional[str]] = os.environ,
+) -> Dict[str, Optional[str]]:
+    """
+    Parse multiple .env files/streams after each other and return the merged content
+    as a dict.
+
+    - *dotenv_paths_or_streams*: list of `dotenv_path` and `stream` arguments
+    - *verbose*: whether to output a warning the .env file is missing. Defaults to
+      `False`.
+    - *encoding*: encoding to be used to read the file.
+    - *base_env*: dict with initial environment. Defaults to os.environ
+    """
+
+    dotenv = chain_multiple_envs(
+        dotenv_paths_or_streams,
+        verbose=verbose,
+        interpolate=interpolate,
+        override=True,
+        encoding=encoding,
+        base_env=base_env,
+    )
+    return dotenv.dict()

@@ -14,6 +14,8 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Add override-flag to `dotenv_values` to allow for more advanced
   chaining of env-files (#73 #186 by [@johnbergvall])
 - Add helper method `chained_dotenv_values` to get all variables from chained env files
+- Add `chain_load_dotenvs`-function and cli support to load variables from multiple
+  files (#73 #246 #257 by [@johnbergvall])
 
 
 ## [0.19.0] - 2021-07-24

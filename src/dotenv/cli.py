@@ -10,12 +10,13 @@ except ImportError:
                      'Run pip install "python-dotenv[cli]" to fix this.')
     sys.exit(1)
 
-from .main import dotenv_values, get_key, set_key, unset_key
+from .main import chained_get_key, chained_dotenv_values, set_key, unset_key
 from .version import __version__
 
 
 @click.group()
-@click.option('-f', '--file', default=os.path.join(os.getcwd(), '.env'),
+@click.option('-f', '--file', default=[os.path.join(os.getcwd(), '.env')],
+              multiple=True,
               type=click.Path(file_okay=True),
               help="Location of the .env file, defaults to .env file in current working directory.")
 @click.option('-q', '--quote', default='always',
@@ -31,7 +32,8 @@ def cli(ctx: click.Context, file: Any, quote: Any, export: Any) -> None:
     ctx.obj = {}
     ctx.obj['QUOTE'] = quote
     ctx.obj['EXPORT'] = export
-    ctx.obj['FILE'] = file
+    ctx.obj['FILE'] = file[0]
+    ctx.obj['FILES'] = file
 
 
 @cli.command()
@@ -39,12 +41,13 @@ def cli(ctx: click.Context, file: Any, quote: Any, export: Any) -> None:
 def list(ctx: click.Context) -> None:
     '''Display all the stored key/value.'''
     file = ctx.obj['FILE']
+    files = ctx.obj['FILES']
     if not os.path.isfile(file):
         raise click.BadParameter(
             'Path "%s" does not exist.' % (file),
             ctx=ctx
         )
-    dotenv_as_dict = dotenv_values(file)
+    dotenv_as_dict = chained_dotenv_values(files)
     for k, v in dotenv_as_dict.items():
         click.echo('%s=%s' % (k, v))
 
@@ -58,6 +61,10 @@ def set(ctx: click.Context, key: Any, value: Any) -> None:
     file = ctx.obj['FILE']
     quote = ctx.obj['QUOTE']
     export = ctx.obj['EXPORT']
+    if len(ctx.obj['FILES']) > 1:
+        raise click.BadParameter(
+            'Updates are not possible when using multiple files', ctx=ctx
+        )
     success, key, value = set_key(file, key, value, quote, export)
     if success:
         click.echo('%s=%s' % (key, value))
@@ -71,12 +78,13 @@ def set(ctx: click.Context, key: Any, value: Any) -> None:
 def get(ctx: click.Context, key: Any) -> None:
     '''Retrieve the value for the given key.'''
     file = ctx.obj['FILE']
+    files = ctx.obj['FILES']
     if not os.path.isfile(file):
         raise click.BadParameter(
             'Path "%s" does not exist.' % (file),
             ctx=ctx
         )
-    stored_value = get_key(file, key)
+    stored_value = chained_get_key(files, key)
     if stored_value:
         click.echo(stored_value)
     else:
@@ -90,6 +98,12 @@ def unset(ctx: click.Context, key: Any) -> None:
     '''Removes the given key.'''
     file = ctx.obj['FILE']
     quote = ctx.obj['QUOTE']
+
+    if len(ctx.obj['FILES']) > 1:
+        raise click.BadParameter(
+            'Updates are not possible when using multiple files', ctx=ctx
+        )
+
     success, key = unset_key(file, key, quote)
     if success:
         click.echo("Successfully removed %s" % key)
@@ -108,6 +122,7 @@ def unset(ctx: click.Context, key: Any) -> None:
 def run(ctx: click.Context, override: bool, commandline: List[str]) -> None:
     """Run command with environment variables present."""
     file = ctx.obj['FILE']
+    files = ctx.obj['FILES']
     if not os.path.isfile(file):
         raise click.BadParameter(
             'Invalid value for \'-f\' "%s" does not exist.' % (file),
@@ -115,7 +130,7 @@ def run(ctx: click.Context, override: bool, commandline: List[str]) -> None:
         )
     dotenv_as_dict = {
         k: v
-        for (k, v) in dotenv_values(file).items()
+        for (k, v) in chained_dotenv_values(files).items()
         if v is not None and (override or k not in os.environ)
     }
 

@@ -30,6 +30,20 @@ def test_list_no_file(cli):
     assert (result.exit_code, result.output) == (1, "")
 
 
+def test_list_multiple_files(cli, dotenv_file, dotenv_file_override):
+    with open(dotenv_file, "w") as f:
+        f.write("a=b")
+
+    with open(dotenv_file_override, "w") as f:
+        f.write("b=c")
+
+    result = cli.invoke(dotenv_cli, ['--file', dotenv_file, '--file', dotenv_file_override, 'list'])
+
+    assert result.exit_code == 0
+    assert 'a=b\n' in result.output
+    assert 'b=c\n' in result.output
+
+
 def test_get_existing_value(cli, dotenv_file):
     with open(dotenv_file, "w") as f:
         f.write("a=b")
